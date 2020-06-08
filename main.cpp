@@ -16,18 +16,24 @@ int main()
     list.push_back(new IntegerListItem(100));
     list.push_back(new FloatListItem(100.3));
 
-    list.print();
+    std::cout << list;
     list.pop_front();
-    std::cout << "pop_front : ";
-    list.print();
+    std::cout << "pop_front : " << list;
     list.pop_back();
-    std::cout << "pop_back : ";
-    list.print();
+    std::cout << "pop_back : "  << list;
     list.erase(flItem);
-    std::cout << "erase 15.5: ";
-    list.print();
+    std::cout << "erase 15.5: " << list;
 
-    list.clear();
+    BidirectionalList copy = list;
+    std::cout << "copy: " << copy;
+    copy.push_back(new StringListItem("Seven"));
+    list = copy;
+    std::cout << "list assign modified copy: " << list;
+
+    BidirectionalList mvCopy(std::move(copy));
+    std::cout << "movable copy: " << mvCopy << "copy is empty: " << copy;
+    copy = std::move(mvCopy);
+    std::cout << "copy: " << copy << "moveble copy is empty: " << mvCopy;
 
     return 0;
 }

@@ -6,20 +6,72 @@
 
 IntegerListItem::IntegerListItem(int value) : value_(value) {}
 
-void IntegerListItem::print() const { std::cout << value_; }
+std::ostream & IntegerListItem::print(std::ostream & os) const { return os << value_; }
+
+IntegerListItem *IntegerListItem::clone() const { return new IntegerListItem(value_); }
 
 FloatListItem::FloatListItem(float value) : value_(value) {}
 
-void FloatListItem::print() const { std::cout << value_; }
+std::ostream & FloatListItem::print(std::ostream & os) const { return os << value_; }
+
+FloatListItem * FloatListItem::clone() const { return new FloatListItem(value_); }
 
 StringListItem::StringListItem(const std::string & value) : value_(value) {}
 
-void StringListItem::print() const {std::cout << value_; }
+StringListItem * StringListItem::clone() const { return new StringListItem(value_); }
+
+std::ostream & StringListItem::print(std::ostream & os) const { return os << value_; }
 
 
 // BidirectionalList
 
 BidirectionalList::~BidirectionalList() { clear(); }
+
+// не очень хорошо, лучше через operator= через swap и конструктор, но для краткости
+BidirectionalList::BidirectionalList(const BidirectionalList & other)
+{
+    operator=(other);
+}
+
+BidirectionalList::BidirectionalList(BidirectionalList && other)
+{
+    first_ = other.first_;
+    last_  = other.last_;
+    other.first_ = nullptr;
+    other.last_  = nullptr;
+}
+
+BidirectionalList & BidirectionalList::operator= (const BidirectionalList & other)
+{
+    if (this != &other)
+    {
+        this->clear();
+        first_ = other.first_->clone();
+        first_->prev_ = nullptr;
+        ListItem * it = first_;
+
+        for (ListItem * othIt = other.first_->next_; othIt != nullptr; othIt = othIt->next_, it = it->next_) {
+            it->next_ = othIt->clone();
+            it->next_->prev_ = it->next_;
+        }
+
+        last_ = it;
+    }
+
+    return *this;
+}
+
+BidirectionalList &BidirectionalList::operator=(BidirectionalList && other)
+{
+    clear();
+
+    first_ = other.first_;
+    last_  = other.last_;
+    other.first_ = nullptr;
+    other.last_  = nullptr;
+
+    return *this;
+}
 
 void BidirectionalList::clear()
 {
@@ -27,10 +79,6 @@ void BidirectionalList::clear()
     for (ListItem * it = first_; it != nullptr; it = tmp) {
         tmp = it->next_;
         delete it;
-    }
-
-    for (ListItem * it = first_; it != nullptr; it = tmp) {
-        tmp = it->next_;
         it = nullptr;
     }
 
@@ -75,7 +123,6 @@ void BidirectionalList::push_front(ListItem * item)
     first_ = item;
 }
 
-
 ListItem *BidirectionalList::erase(ListItem * pos)
 {
     if (first_ == nullptr) return nullptr;
@@ -111,13 +158,15 @@ void BidirectionalList::pop_back()
     tmp = nullptr;
 }
 
-void BidirectionalList::print() const
+std::ostream &BidirectionalList::print(std::ostream & os) const
 {
     for (ListItem * it = first_; it != nullptr; it = it->next_) {
-        it->print();
-        std::cout << " ";
+        it->print(os);
+        os << " ";
     }
-    std::cout << std::endl;
+    os << std::endl;
+
+    return os;
 }
 
 void BidirectionalList::addFirstItem(ListItem * item)
@@ -126,4 +175,14 @@ void BidirectionalList::addFirstItem(ListItem * item)
     first_->next_ = item;
     last_ = item;
     last_->prev_ = item;
+}
+
+std::ostream & operator <<(std::ostream & os, const BidirectionalList & list)
+{
+    return list.print(os);
+}
+
+std::ostream & operator <<(std::ostream &os, ListItem *item)
+{
+    return item->print(os);
 }
