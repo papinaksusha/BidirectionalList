@@ -1,76 +1,136 @@
 #include "bidirectionallist.h"
 
 #include <iostream>
+#include <variant>
+#include <type_traits>
 
 // ListItem
+IntegerListItem::IntegerListItem(int value)
+    : value_(value)
+{}
 
-IntegerListItem::IntegerListItem(int value) : value_(value) {}
+std::ostream & IntegerListItem::print(std::ostream & os) const
+{
+    return os << value_;
+}
 
-std::ostream & IntegerListItem::print(std::ostream & os) const { return os << value_; }
+IntegerListItem * IntegerListItem::clone() const
+{
+    return new IntegerListItem(value_);
+}
 
-IntegerListItem *IntegerListItem::clone() const { return new IntegerListItem(value_); }
+ListVariant IntegerListItem::getValue() const
+{
+    return value_;
+}
 
-FloatListItem::FloatListItem(float value) : value_(value) {}
+FloatListItem::FloatListItem(float value)
+    : value_(value)
+{}
 
-std::ostream & FloatListItem::print(std::ostream & os) const { return os << value_; }
+std::ostream & FloatListItem::print(std::ostream & os) const
+{
+    return os << value_;
+}
 
-FloatListItem * FloatListItem::clone() const { return new FloatListItem(value_); }
+FloatListItem * FloatListItem::clone() const
+{
+    return new FloatListItem(value_);
+}
 
-StringListItem::StringListItem(const std::string & value) : value_(value) {}
+ListVariant FloatListItem::getValue() const
+{
+    return value_;
+}
 
-StringListItem * StringListItem::clone() const { return new StringListItem(value_); }
+StringListItem::StringListItem(const std::string & value)
+    : value_(value)
+{}
 
-std::ostream & StringListItem::print(std::ostream & os) const { return os << value_; }
+StringListItem * StringListItem::clone() const
+{
+    return new StringListItem(value_);
+}
+
+ListVariant StringListItem::getValue() const
+{
+    return value_;
+}
+
+std::ostream & StringListItem::print(std::ostream & os) const
+{
+    return os << value_;
+}
 
 
 // BidirectionalList
-
-BidirectionalList::~BidirectionalList() { clear(); }
-
-// не очень хорошо, лучше через operator= через swap и конструктор, но для краткости
 BidirectionalList::BidirectionalList(const BidirectionalList & other)
 {
-    operator=(other);
+    for (const auto it : other) {
+        ListVariant v = it->getValue();
+        std::visit([this](auto && arg) {
+                   using T = std::decay_t<decltype(arg)>;
+                   if constexpr (std::is_same_v<T, int>)
+                       this->push_back<int>(arg);
+                   else if constexpr (std::is_same_v<T, float>)
+                       this->push_back<float>(arg);
+                   else if constexpr (std::is_same_v<T, std::string>)
+                       this->push_back<std::string>(arg);
+               }, v);
+    }
 }
 
 BidirectionalList::BidirectionalList(BidirectionalList && other)
 {
-    first_ = other.first_;
-    last_  = other.last_;
-    other.first_ = nullptr;
-    other.last_  = nullptr;
+    other.swap(*this);
 }
 
 BidirectionalList & BidirectionalList::operator= (const BidirectionalList & other)
 {
-    if (this != &other)
-    {
-        this->clear();
-        first_ = other.first_->clone();
-        first_->prev_ = nullptr;
-        ListItem * it = first_;
-
-        for (ListItem * othIt = other.first_->next_; othIt != nullptr; othIt = othIt->next_, it = it->next_) {
-            it->next_ = othIt->clone();
-            it->next_->prev_ = it->next_;
-        }
-
-        last_ = it;
-    }
-
+    BidirectionalList tmp(other);
+    tmp.swap(*this);
     return *this;
 }
 
-BidirectionalList &BidirectionalList::operator=(BidirectionalList && other)
+BidirectionalList & BidirectionalList::operator=(BidirectionalList && other)
+{
+    other.swap(*this);
+    return *this;
+}
+
+BidirectionalList::~BidirectionalList()
 {
     clear();
+}
 
-    first_ = other.first_;
-    last_  = other.last_;
-    other.first_ = nullptr;
-    other.last_  = nullptr;
+const ListItem * BidirectionalList::front() const
+{
+    return first_;
+}
 
-    return *this;
+const ListItem * BidirectionalList::back() const
+{
+    return last_;
+}
+
+BidirectionalList::const_iterator BidirectionalList::begin() const
+{
+    return const_iterator(first_, last_);
+}
+
+BidirectionalList::const_iterator BidirectionalList::end() const
+{
+    return const_iterator(nullptr, last_);
+}
+
+bool BidirectionalList::empty() const
+{
+    return (size_ == 0);
+}
+
+std::size_t BidirectionalList::size() const
+{
+    return size_;
 }
 
 void BidirectionalList::clear()
@@ -84,83 +144,75 @@ void BidirectionalList::clear()
 
     first_ = nullptr;
     last_  = nullptr;
+    size_  = 0;
 }
 
-void BidirectionalList::insert(ListItem * pos, ListItem * item)
+BidirectionalList::const_iterator BidirectionalList::erase(BidirectionalList::const_iterator pos)
 {
-    if (pos == first_) {
-        push_front(item);
-    }
-    else if (pos == nullptr) {
-        push_back(item);
-    }
-    else {
-        ListItem * it;
-        for (it = first_; it != pos; it = it->next_);
+    const_iterator itEnd = end();
+    if (empty()) return itEnd;
 
-        it->prev_->next_ = item;
-        item->prev_ = it->prev_;                
-        it->prev_ = item;
-        item->next_ = it;
-    }
-}
-
-void BidirectionalList::push_back(ListItem * item)
-{
-    if (first_ == nullptr) addFirstItem(item);
-
-    last_->next_ = item;
-    item->prev_ = last_;
-    last_ = item;
-}
-
-void BidirectionalList::push_front(ListItem * item)
-{
-    if (first_ == nullptr) addFirstItem(item);
-
-    first_->prev_ = item;
-    item->next_ = first_;
-    first_ = item;
-}
-
-ListItem *BidirectionalList::erase(ListItem * pos)
-{
-    if (first_ == nullptr) return nullptr;
-
-    if (pos == first_) pop_front();
-    else if (pos == last_) pop_back();
-    else {
-        pos->prev_->next_ = pos->next_;
-        pos->next_->prev_ = pos->prev_;
+    const_iterator itBeg = begin();
+    if(pos == itBeg) {
+        pop_front();
+        return begin();
     }
 
-    ListItem * posNext = pos->next_;
-    delete pos;
-    pos = nullptr;
-    return posNext;
+    if(pos == --itEnd) {
+        pop_back();
+        return end();
+    }
+
+    ListItem * it = first_;
+    while(it != pos.pos_ && it != nullptr) it = it->next_;
+
+    if (it == nullptr) return itEnd;
+
+    it->prev_->next_ = it->next_;
+    it->next_->prev_ = it->prev_;
+
+    const_iterator res(it->next_, last_);
+    delete it;
+    it = nullptr;
+    --size_;
+    return res;
 }
+
 
 void BidirectionalList::pop_front()
 {
-    first_->next_->prev_ = nullptr;
-    ListItem * tmp = first_;
-    first_ = first_->next_;
-    delete tmp;
-    tmp = nullptr;
+    if (size_ > 0) {
+        first_->next_->prev_ = nullptr;
+        ListItem * tmp = first_;
+        first_ = first_->next_;
+        delete tmp;
+        tmp = nullptr;
+        --size_;
+    }
 }
 
 void BidirectionalList::pop_back()
 {
-    last_->prev_->next_ = nullptr;
-    ListItem * tmp = last_;
-    last_ = last_->prev_;
-    delete tmp;
-    tmp = nullptr;
+    if (size_ > 0) {
+        last_->prev_->next_ = nullptr;
+        ListItem * tmp = last_;
+        last_ = last_->prev_;
+        delete tmp;
+        tmp = nullptr;
+        --size_;
+    }
+}
+
+void BidirectionalList::swap(BidirectionalList & other)
+{
+    std::swap(first_, other.first_);
+    std::swap(last_,  other.last_);
+    std::swap(size_,  other.size_);
 }
 
 std::ostream &BidirectionalList::print(std::ostream & os) const
 {
-    for (ListItem * it = first_; it != nullptr; it = it->next_) {
+    for (const auto it : *this) {
         it->print(os);
         os << " ";
     }
@@ -177,12 +229,108 @@ void BidirectionalList::addFirstItem(ListItem * item)
     last_->prev_ = item;
 }
 
+void BidirectionalList::push_back_impl(ListItem * item)
+{
+    if (first_ == nullptr) addFirstItem(item);
+    else {
+        last_->next_ = item;
+        item->prev_ = last_;
+        last_ = item;
+        last_->next_ = nullptr;
+    }
+
+    ++size_;
+}
+
+void BidirectionalList::push_front_impl(ListItem * item)
+{
+    if (first_ == nullptr) addFirstItem(item);
+    else {
+        first_->prev_ = item;
+        item->next_ = first_;
+        first_ = item;
+        first_->prev_ = nullptr;
+    }
+
+    ++size_;
+}
+
+BidirectionalList::const_iterator BidirectionalList::insert_impl(ListItem * item, const_iterator pos)
+{
+    ListItem * it;
+    for (it = first_; it != pos.pos_; it = it->next_);
+
+    it->prev_->next_ = item;
+    item->prev_ = it->prev_;
+    it->prev_ = item;
+    item->next_ = it;
+    ++size_;
+
+    return  const_iterator(item, last_);
+}
+
+// const_iterator
+BidirectionalList::const_iterator::const_iterator(ListItem *pos, ListItem *last)
+    : pos_(pos)
+    , last_(last)
+{}
+
+BidirectionalList::const_iterator & BidirectionalList::const_iterator::operator++()
+{
+    pos_ = pos_->next_;
+    return *this;
+}
+
+BidirectionalList::const_iterator BidirectionalList::const_iterator::operator++(int)
+{
+    const_iterator tmp(*this);
+    ++(*this);
+    return tmp;
+}
+
+BidirectionalList::const_iterator & BidirectionalList::const_iterator::operator--()
+{
+    if (pos_ == nullptr) pos_ = last_;
+    else pos_ = pos_->prev_;
+    return *this;
+}
+
+BidirectionalList::const_iterator BidirectionalList::const_iterator::operator--(int)
+{
+    const_iterator tmp(*this);
+    --(*this);
+    return tmp;
+}
+
+bool BidirectionalList::const_iterator::operator!= (BidirectionalList::const_iterator other)
+{
+    return pos_ != other.pos_;
+}
+
+bool BidirectionalList::const_iterator::operator== (BidirectionalList::const_iterator other)
+{
+    return pos_ == other.pos_;
+}
+
+const ListItem *BidirectionalList::const_iterator::operator *() const
+{
+    return pos_;
+}
+
+const ListItem * BidirectionalList::const_iterator::operator ->() const
+{
+    return pos_;
+}
+
+
+// Output
 std::ostream & operator <<(std::ostream & os, const BidirectionalList & list)
 {
     return list.print(os);
 }
 
-std::ostream & operator <<(std::ostream &os, ListItem *item)
+std::ostream & operator <<(std::ostream &os, const ListItem * item)
 {
     return item->print(os);
 }
+
