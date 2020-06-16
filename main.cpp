@@ -7,8 +7,62 @@
 
 int main()
 {
-    BidirectionalList list;
+    //1. Зацикливание
 
+    BidirectionalList list1;
+    list1.push_back(1);
+    std::cout << "list1: " << list1;
+
+    //2. Зацикливание
+
+    BidirectionalList list2;
+    list2.push_front(1.1f);
+    list2.push_front(2.2f);
+    std::cout << "list2: " << list2;
+
+
+    //3. Зацикливание
+
+    BidirectionalList list3;
+    std::cout << "list3: " << list3;
+    list3.push_back(2.2f);
+    list3.push_front(1.1f);
+    std::cout << "list3: " << list3;
+
+    //4. Падение
+
+    BidirectionalList list4;
+    list4.push_front(1);
+    list4.clear();
+    std::cout << "list4: " << list4;
+
+    //5. Падение
+
+    BidirectionalList list5;
+    list5.push_front(1);
+    list5.pop_front();
+    std::cout << "list5: " << list5;
+
+    BidirectionalList list6;
+    list6.push_front(1);
+    list6.pop_front();
+    std::cout << "list6: " << list6;
+
+    BidirectionalList list7;
+    list7.push_back(1);
+    list7.pop_front();
+    std::cout << "list7: " << list7;
+
+    BidirectionalList list8;
+    list8.push_back(1);
+    list8.pop_back();
+    std::cout << "list8: " << list8;
+
+
+
+//// My test
+    std::cout << "\nMy tests\n\n";
+    BidirectionalList list;
     list.push_front(std::string("front"));
     list.push_back(10);
     list.push_back(10.1f);

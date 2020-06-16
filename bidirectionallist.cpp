@@ -181,26 +181,36 @@ BidirectionalList::const_iterator BidirectionalList::erase(BidirectionalList::co
 
 void BidirectionalList::pop_front()
 {
-    if (size_ > 0) {
+    if (size_ == 1) {
+        delete first_;
+        first_ = nullptr;
+        last_  = nullptr;
+    }
+    else if (size_ > 1) {
         first_->next_->prev_ = nullptr;
         ListItem * tmp = first_;
         first_ = first_->next_;
         delete tmp;
         tmp = nullptr;
-        --size_;
     }
+    --size_;
 }
 
 void BidirectionalList::pop_back()
 {
-    if (size_ > 0) {
+    if (size_ == 1) {
+        delete first_;
+        first_ = nullptr;
+        last_  = nullptr;
+    }
+    else if (size_ > 1) {
         last_->prev_->next_ = nullptr;
         ListItem * tmp = last_;
         last_ = last_->prev_;
         delete tmp;
         tmp = nullptr;
-        --size_;
     }
+    --size_;
 }
 
 void BidirectionalList::swap(BidirectionalList & other)
@@ -224,14 +234,13 @@ std::ostream &BidirectionalList::print(std::ostream & os) const
 void BidirectionalList::addFirstItem(ListItem * item)
 {
     first_ = item;
-    first_->next_ = item;
     last_ = item;
-    last_->prev_ = item;
+    last_->next_ = nullptr;
 }
 
 void BidirectionalList::push_back_impl(ListItem * item)
 {
-    if (first_ == nullptr) addFirstItem(item);
+    if (size_ == 0) addFirstItem(item);
     else {
         last_->next_ = item;
         item->prev_ = last_;
@@ -244,7 +253,7 @@ void BidirectionalList::push_back_impl(ListItem * item)
 
 void BidirectionalList::push_front_impl(ListItem * item)
 {
-    if (first_ == nullptr) addFirstItem(item);
+    if (size_ == 0) addFirstItem(item);
     else {
         first_->prev_ = item;
         item->next_ = first_;
